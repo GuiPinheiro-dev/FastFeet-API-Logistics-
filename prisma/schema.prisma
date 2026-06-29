@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  DELIVERER
+}
+
+enum OrderStatus {
+  PENDING
+  PICKED_UP
+  DELIVERED
+  RETURNED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  cpf          String   @unique
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role     @default(DELIVERER)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  orders  Order[]  @relation("DelivererOrders")
+  pickups Pickup[]
+
+  @@map("users")
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  title       String
+  description String?
+  status      OrderStatus @default(PENDING)
+  photoUrl    String?     @map("photo_url")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  delivererId String? @map("deliverer_id")
+  deliverer   User?   @relation("DelivererOrders", fields: [delivererId], references: [id])
+
+  recipientId String    @map("recipient_id")
+  recipient   Recipient @relation(fields: [recipientId], references: [id])
+
+  pickups    Pickup[]
+  statusLogs OrderStatusLog[]
+
+  @@map("orders")
+}
+
+model Recipient {
+  id      String @id @default(uuid())
+  name    String
+  address String
+  city    String
+  state   String
+  zip     String
+
+  orders Order[]
+
+  @@map("recipients")
+}
+
+model Pickup {
+  id          String   @id @default(uuid())
+  delivererId String   @map("deliverer_id")
+  deliverer   User     @relation(fields: [delivererId], references: [id])
+  orderId     String   @map("order_id")
+  order       Order    @relation(fields: [orderId], references: [id])
+  pickedUpAt  DateTime @default(now()) @map("picked_up_at")
+
+  @@map("pickups")
+}
+
+model OrderStatusLog {
+  id        String      @id @default(uuid())
+  orderId   String      @map("order_id")
+  order     Order       @relation(fields: [orderId], references: [id])
+  from      OrderStatus
+  to        OrderStatus
+  changedAt DateTime    @default(now()) @map("changed_at")
+
+  @@map("order_status_logs")
+}
